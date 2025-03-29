@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Bình chọn</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        function updateCountdown() {
+            const endTimeStr = "{{ end_time }}";
+            if (!endTimeStr) {
+                document.getElementById("countdown").innerHTML = "Không có thông tin thời gian!";
+                return;
+            }
+
+            const endTime = new Date(endTimeStr);
+            const interval = setInterval(function () {
+                const now = new Date().getTime();
+                const distance = endTime - now;
+
+                if (distance <= 0) {
+                    document.getElementById("countdown").innerHTML = "Bình chọn đã kết thúc!";
+                    document.getElementById("voteForm").style.display = "none"; // Ẩn form bình chọn
+                    clearInterval(interval);
+                } else {
+                    const hours = Math.floor(distance / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    document.getElementById("countdown").innerHTML = 
+                        `Thời gian còn lại: ${hours} giờ ${minutes} phút ${seconds} giây`;
+                }
+            }, 1000);
+        }
+    </script>
+</head>
+<body onload="updateCountdown()">
+    <h2>Bình chọn</h2>
+
+    <p id="countdown"></p> <!-- Thời gian đếm ngược -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p class="{{ category }}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if user_vote %}
+        <p>Bạn đã bỏ phiếu cho: <strong>{{ user_vote[1] }}</strong></p>
+        <p><em>Bạn không thể bình chọn lại.</em></p> 
+    {% else %}
+        {% if candidates %}
+        <form id="voteForm" method="post">
+            {% for candidate in candidates %}
+            <label>
+                <input type="radio" name="candidate" value="{{ candidate.id }}" required>
+                {{ candidate.name }}
+            </label><br>
+            {% endfor %}
+            <button type="submit">Bình chọn</button>
+        </form>
+        {% else %}
+        <p>Chưa có ứng cử viên nào.</p>
+        {% endif %}
+    {% endif %}
+
+    <a href="/logout">Đăng xuất</a>
+</body>
+</html>

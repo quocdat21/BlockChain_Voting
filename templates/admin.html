@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý bình chọn</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: auto;
+            text-align: center;
+        }
+        .container {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: blue;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: darkblue;
+        }
+        .alert {
+            background-color: #ffcccc;
+            color: red;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h2>Quản lý bình chọn</h2>
+
+    <!-- Kiểm tra nếu thời gian bình chọn đã kết thúc -->
+    {% if config and config.end_time < now %}
+    <div class="alert">
+        Bình chọn đã kết thúc! Nếu muốn thêm ứng cử viên mới, vui lòng tạo một cuộc bình chọn mới.
+    </div>
+    {% endif %}
+
+    <div class="container">
+        <h3>Thêm ứng cử viên</h3>
+        <form method="post">
+            <input type="text" name="candidate_name" placeholder="Nhập tên ứng cử viên" required>
+            <button type="submit">Thêm</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h3>Danh sách ứng cử viên</h3>
+        {% if candidates %}
+            <ul>
+                {% for candidate in candidates %}
+                <li>{{ candidate.name }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Chưa có ứng cử viên nào.</p>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        <h3>Cài đặt thời gian bình chọn</h3>
+        <form method="post">
+            <label>Bắt đầu: <input type="datetime-local" name="start_time" required></label><br><br>
+            <label>Kết thúc: <input type="datetime-local" name="end_time" required></label><br><br>
+            <button type="submit">Cập nhật</button>
+        </form>
+        {% if config %}
+            <p><strong>Thời gian bình chọn hiện tại:</strong></p>
+            <p>Bắt đầu: {{ config.start_time }}</p>
+            <p>Kết thúc: {{ config.end_time }}</p>
+        {% else %}
+            <p><em>Chưa thiết lập thời gian bình chọn.</em></p>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        <h3>Danh sách phiếu bầu</h3>
+        {% if votes %}
+            <table>
+                <tr>
+                    <th>STT</th>
+                    <th>Người bình chọn</th>
+                    <th>Ứng cử viên</th>
+                </tr>
+                {% for vote in votes %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ vote.voter }}</td>
+                    <td>{{ vote.candidate }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>Chưa có phiếu bầu nào.</p>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        <h3>Kết quả bình chọn</h3>
+        {% if vote_counts %}
+            <table>
+                <tr>
+                    <th>Ứng cử viên</th>
+                    <th>Số phiếu</th>
+                </tr>
+                {% for candidate, count in vote_counts.items() %}
+                <tr>
+                    <td>{{ candidate }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>Chưa có phiếu bầu nào.</p>
+        {% endif %}
+    </div>
+
+    <a href="/logout">Đăng xuất</a>
+</body>
+</html>
