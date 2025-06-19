@@ -6,140 +6,268 @@
     <link rel="stylesheet" href="/static/style.css">
     <style>
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: auto;
-            text-align: center;
-        }
-        .container {
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
             background-color: #f9f9f9;
         }
-        button {
-            background-color: blue;
+
+        .header {
+            background-color: #007bff;
             color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logout-btn {
+            background: white;
+            color: #007bff;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 8px 12px;
+            border-radius: 4px;
             cursor: pointer;
         }
-        button:hover {
-            background-color: darkblue;
+
+        .main {
+            padding: 30px;
         }
-        .alert {
-            background-color: #ffcccc;
-            color: red;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
         }
-        table {
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: red;
+            color: white;
+        }
+
+        /* Grid view các cuộc bình chọn */
+        .polls-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .poll-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .poll-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .poll-body h4 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .poll-footer {
+            margin-top: auto;
+            text-align: center;
+        }
+
+        .status {
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .ongoing {
+            background-color: #d1f0d1;
+            color: #2e7d32;
+        }
+
+        .ended {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .full-width {
             width: 100%;
-            border-collapse: collapse;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 999;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 500px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            top: 10px; right: 15px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        .candidate-list {
             margin-top: 10px;
         }
-        table, th, td {
-            border: 1px solid black;
+
+        .candidate-item {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
         }
-        th, td {
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        input, button {
             padding: 8px;
-            text-align: center;
         }
     </style>
 </head>
 <body>
-    <h2>Quản lý bình chọn</h2>
 
-    <!-- Kiểm tra nếu thời gian bình chọn đã kết thúc -->
-    {% if config and config.end_time < now %}
-    <div class="alert">
-        Bình chọn đã kết thúc! Nếu muốn thêm ứng cử viên mới, vui lòng tạo một cuộc bình chọn mới.
-    </div>
-    {% endif %}
-
-    <div class="container">
-        <h3>Thêm ứng cử viên</h3>
-        <form method="post">
-            <input type="text" name="candidate_name" placeholder="Nhập tên ứng cử viên" required>
-            <button type="submit">Thêm</button>
-        </form>
+    <div class="header">
+        <h2>Quản lý bình chọn</h2>
+        <a href="/logout"><button class="logout-btn">Đăng xuất</button></a>
     </div>
 
-    <div class="container">
-        <h3>Danh sách ứng cử viên</h3>
-        {% if candidates %}
-            <ul>
-                {% for candidate in candidates %}
-                <li>{{ candidate.name }}</li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>Chưa có ứng cử viên nào.</p>
-        {% endif %}
+    <div class="main">
+        <button class="btn btn-primary" onclick="openModal()">+ Thêm cuộc bình chọn</button>
+
+        <!-- Danh sách cuộc bình chọn -->
+        <h3>Danh sách cuộc bình chọn</h3>
+        <div class="polls-grid">
+            {% for poll in polls %}
+            <div class="poll-card">
+                <div class="poll-body">
+                    <h4>{{ poll.title }}</h4>
+                    <p><strong>Từ:</strong> {{ poll.start_time.strftime('%d/%m/%Y %H:%M') }}</p>
+                    <p><strong>Đến:</strong> {{ poll.end_time.strftime('%d/%m/%Y %H:%M') }}</p>
+                    <p><strong>Phiếu đã bầu:</strong> {{ poll.vote_count }}</p>
+                    {% if poll.end_time > now %}
+                        <span class="status ongoing">Đang diễn ra</span>
+                    {% else %}
+                        <span class="status ended">Đã kết thúc</span>
+                    {% endif %}
+                </div>
+                <div class="poll-footer">
+                    <a href="/admin/poll/{{ poll.id }}">
+                        <button class="btn btn-primary full-width">Xem chi tiết</button>
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <p>Chưa có cuộc bình chọn nào.</p>
+            {% endfor %}
+        </div>
     </div>
 
-    <div class="container">
-        <h3>Cài đặt thời gian bình chọn</h3>
-        <form method="post">
-            <label>Bắt đầu: <input type="datetime-local" name="start_time" required></label><br><br>
-            <label>Kết thúc: <input type="datetime-local" name="end_time" required></label><br><br>
-            <button type="submit">Cập nhật</button>
-        </form>
-        {% if config %}
-            <p><strong>Thời gian bình chọn hiện tại:</strong></p>
-            <p>Bắt đầu: {{ config.start_time }}</p>
-            <p>Kết thúc: {{ config.end_time }}</p>
-        {% else %}
-            <p><em>Chưa thiết lập thời gian bình chọn.</em></p>
-        {% endif %}
+    <!-- Modal -->
+    <div id="pollModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>Tạo cuộc bình chọn</h3>
+            <form id="createPollForm" method="post" action="/admin/create">
+                <input type="text" name="poll_title" placeholder="Tên cuộc bình chọn" required><br><br>
+                <input type="datetime-local" name="start_time" required>
+                <input type="datetime-local" name="end_time" required><br><br>
+
+                <div class="input-group">
+                    <input type="text" id="candidateInput" placeholder="Tên ứng cử viên">
+                    <button type="button" class="btn btn-primary" onclick="addCandidate()">Thêm</button>
+                </div>
+
+                <div class="candidate-list" id="candidateList"></div>
+
+                <input type="hidden" name="candidates" id="candidatesField">
+
+                <br>
+                <button type="submit" class="btn btn-primary">Tạo</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal()">Huỷ</button>
+            </form>
+        </div>
     </div>
 
-    <div class="container">
-        <h3>Danh sách phiếu bầu</h3>
-        {% if votes %}
-            <table>
-                <tr>
-                    <th>STT</th>
-                    <th>Người bình chọn</th>
-                    <th>Ứng cử viên</th>
-                </tr>
-                {% for vote in votes %}
-                <tr>
-                    <td>{{ loop.index }}</td>
-                    <td>{{ vote.voter }}</td>
-                    <td>{{ vote.candidate }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-        {% else %}
-            <p>Chưa có phiếu bầu nào.</p>
-        {% endif %}
-    </div>
+    <script>
+        let candidates = [];
 
-    <div class="container">
-        <h3>Kết quả bình chọn</h3>
-        {% if vote_counts %}
-            <table>
-                <tr>
-                    <th>Ứng cử viên</th>
-                    <th>Số phiếu</th>
-                </tr>
-                {% for candidate, count in vote_counts.items() %}
-                <tr>
-                    <td>{{ candidate }}</td>
-                    <td>{{ count }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-        {% else %}
-            <p>Chưa có phiếu bầu nào.</p>
-        {% endif %}
-    </div>
+        function openModal() {
+            document.getElementById("pollModal").style.display = "block";
+        }
 
-    <a href="/logout">Đăng xuất</a>
+        function closeModal() {
+            document.getElementById("pollModal").style.display = "none";
+            candidates = [];
+            updateCandidateList();
+            document.getElementById("createPollForm").reset();
+        }
+
+        function addCandidate() {
+            const input = document.getElementById("candidateInput");
+            const name = input.value.trim();
+            if (!name) return;
+
+            candidates.push(name);
+            updateCandidateList();
+            input.value = "";
+        }
+
+        function removeCandidate(index) {
+            candidates.splice(index, 1);
+            updateCandidateList();
+        }
+
+        function updateCandidateList() {
+            const list = document.getElementById("candidateList");
+            const hiddenField = document.getElementById("candidatesField");
+
+            list.innerHTML = "";
+            candidates.forEach((name, index) => {
+                const div = document.createElement("div");
+                div.className = "candidate-item";
+                div.innerHTML = `
+                    <span>${name}</span>
+                    <button type="button" class="btn btn-danger" onclick="removeCandidate(${index})">Xoá</button>
+                `;
+                list.appendChild(div);
+            });
+
+            hiddenField.value = JSON.stringify(candidates);
+        }
+    </script>
 </body>
 </html>

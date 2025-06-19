@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ poll.title }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        header h2 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .back-btn {
+            text-decoration: none;
+            color: #007BFF;
+            font-weight: bold;
+        }
+
+        section {
+            margin-bottom: 30px;
+        }
+
+        h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #eef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>{{ poll.title }}</h2>
+            <a href="/admin" class="back-btn">← Quay lại</a>
+        </header>
+
+        <section>
+            <h3>Thời gian:</h3>
+            <p><strong>Bắt đầu:</strong> {{ poll.start_time.strftime("%d/%m/%Y %H:%M") }}</p>
+            <p><strong>Kết thúc:</strong> {{ poll.end_time.strftime("%d/%m/%Y %H:%M") }}</p>
+        </section>
+
+        <section>
+            <h3>Kết quả bình chọn:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ứng cử viên</th>
+                        <th>Số phiếu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, count in vote_counts.items() %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h3>Danh sách phiếu bầu:</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Người bầu</th>
+                        <th>Ứng cử viên</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vote in votes %}
+                        {% if vote["candidate"] in vote_counts %}
+                        <tr>
+                            <td>{{ vote["voter"] }}</td>
+                            <td>{{ vote["candidate"] }}</td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+</body>
+</html>
