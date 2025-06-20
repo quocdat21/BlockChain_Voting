@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -21,11 +22,19 @@ class Candidate(db.Model):
     name = db.Column(db.String(80), nullable=False)
     poll_id = db.Column(db.Integer, db.ForeignKey('poll.id'), nullable=False)
 
+class Block(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    index = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    votes_json = db.Column(db.Text, nullable=False)  # list of vote dicts
+    voted_users_json = db.Column(db.Text, nullable=False)  # dict {poll_id: {voter: candidate}}
+    previous_hash = db.Column(db.String(64), nullable=False)
+    hash = db.Column(db.String(64), nullable=False)
+
 def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
-        # Tạo admin mặc định nếu chưa có
         if not User.query.filter_by(username="admin").first():
             admin = User(username="admin", password=generate_password_hash("123456"), is_admin=True)
             db.session.add(admin)

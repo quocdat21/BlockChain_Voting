@@ -2,13 +2,112 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Bình chọn</title>
+    <title>{{ poll.title }}</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: #f9f9f9;
+        }
+
+        .header {
+            background-color: #28a745;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .poll-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .back-btn {
+            background: white;
+            color: #28a745;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .container {
+            padding: 30px;
+            max-width: 600px;
+            margin: 30px auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .countdown {
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .vote-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .candidate-option {
+            border: 2px solid #ccc;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .candidate-option:hover {
+            border-color: #28a745;
+            background-color: #f0fff0;
+        }
+
+        .candidate-option input[type="radio"] {
+            margin-right: 12px;
+            transform: scale(1.2);
+        }
+
+        .candidate-option.selected {
+            border-color: #28a745;
+            background-color: #eaffea;
+        }
+
+        .vote-form button {
+            margin-top: 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .message {
+            padding: 10px;
+            background-color: #e2ffe2;
+            border-left: 5px solid #28a745;
+            margin-bottom: 20px;
+        }
+    </style>
+
     <script>
         function updateCountdown() {
-            const endTimeStr = "{{ end_time }}";
+            const endTimeStr = document.body.getAttribute("data-end-time");
             if (!endTimeStr) {
-                document.getElementById("countdown").innerHTML = "Không có thông tin thời gian!";
+                document.getElementById("countdown").innerText = "Không có thông tin thời gian!";
                 return;
             }
 
@@ -18,52 +117,73 @@
                 const distance = endTime - now;
 
                 if (distance <= 0) {
-                    document.getElementById("countdown").innerHTML = "Bình chọn đã kết thúc!";
-                    document.getElementById("voteForm").style.display = "none"; // Ẩn form bình chọn
+                    document.getElementById("countdown").innerText = "Bình chọn đã kết thúc!";
+                    const form = document.getElementById("voteForm");
+                    if (form) form.style.display = "none";
                     clearInterval(interval);
                 } else {
                     const hours = Math.floor(distance / (1000 * 60 * 60));
                     const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                    document.getElementById("countdown").innerHTML = 
-                        `Thời gian còn lại: ${hours} giờ ${minutes} phút ${seconds} giây`;
+                    document.getElementById("countdown").innerText =
+                        `Thời gian bình chọn còn: ${hours} giờ ${minutes} phút ${seconds} giây`;
                 }
             }, 1000);
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const options = document.querySelectorAll(".candidate-option");
+
+            options.forEach(option => {
+                const radio = option.querySelector("input[type='radio']");
+                radio.addEventListener("change", () => {
+                    options.forEach(opt => opt.classList.remove("selected"));
+                    if (radio.checked) {
+                        option.classList.add("selected");
+                    }
+                });
+            });
+        });
     </script>
 </head>
-<body onload="updateCountdown()">
-    <h2>Bình chọn</h2>
 
-    <p id="countdown"></p> <!-- Thời gian đếm ngược -->
+<body onload="updateCountdown()" data-end-time="{{ end_time }}">
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <p class="{{ category }}">{{ message }}</p>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    <div class="header">
+        <div class="poll-title">{{ poll.title }}</div>
+        <a href="/voting/list" class="back-btn">← Quay lại</a>
+    </div>
 
-    {% if user_vote %}
-        <p>Bạn đã bỏ phiếu cho: <strong>{{ user_vote[1] }}</strong></p>
-        <p><em>Bạn không thể bình chọn lại.</em></p> 
-    {% else %}
-        {% if candidates %}
-        <form id="voteForm" method="post">
-            {% for candidate in candidates %}
-            <label>
-                <input type="radio" name="candidate" value="{{ candidate.id }}" required>
-                {{ candidate.name }}
-            </label><br>
-            {% endfor %}
-            <button type="submit">Bình chọn</button>
-        </form>
+    <div class="container">
+        <p class="countdown" id="countdown"></p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <p class="message">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if user_vote %}
+            <p>Bạn đã bỏ phiếu cho: <strong>{{ user_vote[1] }}</strong></p>
+            <p><em>Bạn không thể bình chọn lại.</em></p>
         {% else %}
-        <p>Chưa có ứng cử viên nào.</p>
+            {% if candidates %}
+            <form id="voteForm" class="vote-form" method="post">
+                {% for candidate in candidates %}
+                <label class="candidate-option">
+                    <input type="radio" name="candidate" value="{{ candidate.id }}" required>
+                    {{ candidate.name }}
+                </label>
+                {% endfor %}
+                <button type="submit">Bình chọn</button>
+            </form>
+            {% else %}
+            <p>Chưa có ứng cử viên nào.</p>
+            {% endif %}
         {% endif %}
-    {% endif %}
+    </div>
 
-    <a href="/logout">Đăng xuất</a>
 </body>
 </html>
