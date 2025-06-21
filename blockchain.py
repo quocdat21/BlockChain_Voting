@@ -6,17 +6,17 @@ from models import db, Block
 
 class Blockchain:
     def __init__(self):
-        self.current_votes = []
+        self.current_votes = {}
         self.voted_users = {}
 
-    def init_chain_if_needed(self):
-        """Chỉ tạo khối Genesis nếu blockchain chưa có dữ liệu."""
-        if not Block.query.first():
-            self.create_genesis_block()
+    def init_chain_if_needed(self, poll_id):
+        """Tạo genesis block nếu poll chưa có block nào."""
+        if not Block.query.filter_by(poll_id=poll_id).first():
+            self.create_genesis_block(poll_id)
 
-    def create_genesis_block(self):
-        """Tạo khối đầu tiên (genesis)."""
+    def create_genesis_block(self, poll_id):
         genesis_block = Block(
+            poll_id=poll_id,
             index=1,
             timestamp=datetime.utcnow(),
             votes_json=json.dumps([]),
@@ -36,30 +36,37 @@ class Blockchain:
         }
         return hashlib.sha256(json.dumps(block_data, sort_keys=True).encode()).hexdigest()
 
-    def create_block(self, previous_hash):
-        if not self.current_votes:
+    def create_block(self, poll_id, previous_hash):
+        if poll_id not in self.current_votes or not self.current_votes[poll_id]:
             return None
 
-        last_block = Block.query.order_by(Block.index.desc()).first()
-        new_index = last_block.index + 1
+        last_block = Block.query.filter_by(poll_id=poll_id).order_by(Block.index.desc()).first()
+        new_index = last_block.index + 1 if last_block else 1
+
+        votes = self.current_votes[poll_id]
+        voted_users = self.voted_users.get(poll_id, {})
 
         new_block = Block(
+            poll_id=poll_id,
             index=new_index,
             timestamp=datetime.utcnow(),
-            votes_json=json.dumps(self.current_votes),
-            voted_users_json=json.dumps(self.voted_users),
+            votes_json=json.dumps(votes),
+            voted_users_json=json.dumps(voted_users),
             previous_hash=previous_hash,
-            hash=self.hash_block(new_index, self.current_votes, self.voted_users, previous_hash)
+            hash=self.hash_block(new_index, votes, voted_users, previous_hash)
         )
 
         db.session.add(new_block)
         db.session.commit()
 
-        self.current_votes = []
-        self.voted_users = {}
+        # Reset dữ liệu tạm cho poll này
+        self.current_votes[poll_id] = []
+        self.voted_users[poll_id] = {}
         return new_block
 
     def add_vote(self, voter, candidate, poll_id):
+        self.init_chain_if_needed(poll_id)
+
         if self.has_voted(voter, poll_id):
             return False
 
@@ -68,38 +75,40 @@ class Blockchain:
             "candidate": candidate,
             "poll_id": poll_id
         }
-        self.current_votes.append(vote)
 
-        poll_id_str = str(poll_id)
-        if poll_id_str not in self.voted_users:
-            self.voted_users[poll_id_str] = {}
-        self.voted_users[poll_id_str][voter] = candidate
+        if poll_id not in self.current_votes:
+            self.current_votes[poll_id] = []
+        self.current_votes[poll_id].append(vote)
 
-        last_block = Block.query.order_by(Block.index.desc()).first()
+        if poll_id not in self.voted_users:
+            self.voted_users[poll_id] = {}
+        self.voted_users[poll_id][voter] = candidate
+
+        last_block = Block.query.filter_by(poll_id=poll_id).order_by(Block.index.desc()).first()
         previous_hash = last_block.hash if last_block else "0"
-        self.create_block(previous_hash)
+        self.create_block(poll_id, previous_hash)
         return True
 
     def has_voted(self, voter, poll_id):
-        poll_id_str = str(poll_id)
-        all_blocks = Block.query.all()
-        for block in all_blocks:
-            voted_dict = json.loads(block.voted_users_json).get(poll_id_str, {})
+        blocks = Block.query.filter_by(poll_id=poll_id).all()
+        for block in blocks:
+            voted_dict = json.loads(block.voted_users_json)
             if voter in voted_dict:
                 return True
-        return poll_id_str in self.voted_users and voter in self.voted_users[poll_id_str]
+        return voter in self.voted_users.get(poll_id, {})
 
     def get_vote_by_user(self, voter, poll_id):
-        poll_id_str = str(poll_id)
-        all_blocks = Block.query.all()
-        for block in all_blocks:
+        blocks = Block.query.filter_by(poll_id=poll_id).all()
+        for block in blocks:
             votes = json.loads(block.votes_json)
             for vote in votes:
-                if vote["voter"] == voter and str(vote["poll_id"]) == poll_id_str:
+                if vote["voter"] == voter:
                     return vote["voter"], vote["candidate"]
-        for vote in self.current_votes:
-            if vote["voter"] == voter and str(vote["poll_id"]) == poll_id_str:
+
+        for vote in self.current_votes.get(poll_id, []):
+            if vote["voter"] == voter:
                 return vote["voter"], vote["candidate"]
+
         return None
 
     def get_all_votes(self):
@@ -107,8 +116,9 @@ class Blockchain:
         all_blocks = Block.query.all()
         for block in all_blocks:
             votes.extend(json.loads(block.votes_json))
-        votes.extend(self.current_votes)
+
+        # Thêm cả các votes đang chờ trong self.current_votes
+        for poll_votes in self.current_votes.values():
+            votes.extend(poll_votes)
+
         return votes
-    def init_chain_if_needed(self):
-        if not Block.query.first():
-            self.create_genesis_block()

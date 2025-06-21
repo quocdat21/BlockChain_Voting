@@ -12,15 +12,14 @@ app.config["SECRET_KEY"] = "your_secret_key"
 # Khởi tạo database
 init_db(app)
 
-# Khởi tạo Blockchain sau khi có app context
+# Khởi tạo Blockchain
 blockchain = Blockchain()
-with app.app_context():
-    blockchain.init_chain_if_needed()
 
 
 @app.route("/")
 def home():
     return redirect(url_for("login"))
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -37,6 +36,7 @@ def login():
         flash("Sai tài khoản hoặc mật khẩu!", "danger")
     return render_template("login.html")
 
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -52,13 +52,18 @@ def register():
             return redirect(url_for("login"))
     return render_template("register.html")
 
+
 @app.route("/voting/list")
 def voting_list():
     if "user_id" not in session or session.get("is_admin"):
         return redirect(url_for("login"))
     now = datetime.now()
-    polls = Poll.query.filter(Poll.start_time <= now, Poll.end_time >= now).all()
+    polls = Poll.query.filter(
+        Poll.start_time <= now, Poll.end_time >= now
+    ).order_by(Poll.id.desc()).all()
+
     return render_template("voting_dashboard.html", polls=polls, username=session.get("username"))
+
 
 @app.route("/voting/<int:poll_id>", methods=["GET", "POST"])
 def voting(poll_id):
@@ -91,18 +96,20 @@ def voting(poll_id):
                            end_time=poll.end_time.isoformat(),
                            user_vote=user_vote)
 
+
 @app.route("/admin")
 def admin():
     if "user_id" not in session or not session.get("is_admin"):
         return redirect(url_for("login"))
 
-    polls = Poll.query.order_by(Poll.start_time.desc()).all()
+    polls = Poll.query.order_by(Poll.id.desc()).all()
     all_votes = blockchain.get_all_votes()
 
     for poll in polls:
         poll.vote_count = sum(1 for vote in all_votes if vote["candidate"] in [c.name for c in poll.candidates])
 
     return render_template("admin.html", polls=polls, now=datetime.now(), username=session.get("username"))
+
 
 @app.route("/admin/create", methods=["POST"])
 def create_poll():
@@ -129,6 +136,7 @@ def create_poll():
         flash(f"Lỗi khi tạo cuộc bình chọn: {str(e)}", "danger")
 
     return redirect(url_for("admin"))
+
 
 @app.route("/admin/poll/<int:poll_id>")
 def poll_detail(poll_id):
@@ -163,30 +171,14 @@ def poll_detail(poll_id):
                            votes=[v for v in votes if v["poll_id"] == poll.id],
                            blocks=poll_blocks)
 
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-@app.route("/blockchain")
-def get_blockchain():
-    blocks = Block.query.order_by(Block.index).all()
-    chain = []
-    for block in blocks:
-        chain.append({
-            "index": block.index,
-            "timestamp": block.timestamp.isoformat(),
-            "votes": json.loads(block.votes_json),
-            "voted_users": json.loads(block.voted_users_json),
-            "previous_hash": block.previous_hash,
-            "hash": block.hash
-        })
-    return jsonify(chain), 200
 
-from flask import jsonify
-
-from flask import jsonify
-import json
+from datetime import timedelta
 
 @app.route("/debug/blocks")
 def debug_blocks():
@@ -203,9 +195,12 @@ def debug_blocks():
         except Exception as e:
             voted_users = f"Lỗi giải mã voted_users_json: {str(e)}"
 
+        # Cộng 7 tiếng để chuyển về giờ Việt Nam
+        vn_time = b.timestamp + timedelta(hours=7)
+
         result.append({
             "index": b.index,
-            "timestamp": b.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": vn_time.strftime("%Y-%m-%d %H:%M:%S"),
             "votes": votes,
             "voted_users": voted_users,
             "hash": b.hash,
@@ -213,6 +208,7 @@ def debug_blocks():
         })
 
     return jsonify(result)
+
 
 
 if __name__ == "__main__":

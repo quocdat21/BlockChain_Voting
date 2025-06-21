@@ -24,10 +24,11 @@ class Candidate(db.Model):
 
 class Block(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey('poll.id'), nullable=False)  # Gắn block với cuộc bình chọn
     index = db.Column(db.Integer, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    votes_json = db.Column(db.Text, nullable=False)  # list of vote dicts
-    voted_users_json = db.Column(db.Text, nullable=False)  # dict {poll_id: {voter: candidate}}
+    votes_json = db.Column(db.Text, nullable=False)
+    voted_users_json = db.Column(db.Text, nullable=False)
     previous_hash = db.Column(db.String(64), nullable=False)
     hash = db.Column(db.String(64), nullable=False)
 
